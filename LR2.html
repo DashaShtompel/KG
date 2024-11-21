@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LR2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Comfortaa', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        canvas {
+            display: block;
+            margin: 10px auto;
+            border: 1px solid #ccc;
+            max-width: 100%;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Обработка изображений</h1>
+    <div class="container">
+        <input type="file" id="imageInput" accept="image/*">
+        <canvas id="originalCanvas"></canvas>
+        <canvas id="processedCanvas"></canvas>
+        <div class="controls">
+            <button onclick="applyThreshold('method1')">Локальная пороговая обработка (Метод 1)</button>
+            <button onclick="applyThreshold('method2')">Локальная пороговая обработка (Метод 2)</button>
+            <button onclick="applyContrast()">Линейное контрастирование</button>
+            <button onclick="applyPixelwiseOperation()">Поэлементные операции</button>
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const originalCtx = originalCanvas.getContext('2d');
+        const processedCtx = processedCanvas.getContext('2d');
+
+        // Загрузка изображения
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalCanvas.width = img.width;
+                    originalCanvas.height = img.height;
+                    processedCanvas.width = img.width;
+                    processedCanvas.height = img.height;
+                    originalCtx.drawImage(img, 0, 0);
+                    processedCtx.drawImage(img, 0, 0);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Локальная пороговая обработка
+        function applyThreshold(method) {
+            const imageData = originalCtx.getImageData(0, 0, originalCanvas.width, originalCanvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                let threshold = method === 'method1' ? 128 : (gray > 100 ? 200 : 50); // Пример двух методов
+                const value = gray > threshold ? 255 : 0;
+                data[i] = data[i + 1] = data[i + 2] = value;
+            }
+            processedCtx.putImageData(imageData, 0, 0);
+        }
+
+        // Линейное контрастирование
+        function applyContrast() {
+            const imageData = originalCtx.getImageData(0, 0, originalCanvas.width, originalCanvas.height);
+            const data = imageData.data;
+            let min = 255, max = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                min = Math.min(min, gray);
+                max = Math.max(max, gray);
+            }
+            const scale = 255 / (max - min);
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = data[i + 1] = data[i + 2] = Math.min(Math.max((data[i] - min) * scale, 0), 255);
+            }
+            processedCtx.putImageData(imageData, 0, 0);
+        }
+
+        // Поэлементные операции
+        function applyPixelwiseOperation() {
+            const imageData = originalCtx.getImageData(0, 0, originalCanvas.width, originalCanvas.height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i]; // Инверсия красного канала
+                data[i + 1] = data[i + 1]; // Зелёный остается
+                data[i + 2] = 255 - data[i + 2]; // Инверсия синего канала
+            }
+            processedCtx.putImageData(imageData, 0, 0);
+        }
+    </script>
+</body>
+</html>
